@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import {useContext, useMemo, useRef, useLayoutEffect} from 'react';
+import {useContext, useMemo, useRef, useLayoutEffect, useEffect} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {ReactReduxContext} from 'react-redux';
 
@@ -39,57 +39,140 @@ export default function lazyLegacyRoot(getLegacyComponent) {
     const location = useLocation();
     const navigate = useNavigate();
     
-    const router = useMemo(() => {
-      const history = {
-        length: window.history.length,
-        action: 'POP', // Default action for initial load
-        location: {
-          pathname: location.pathname,
-          search: location.search,
-          hash: location.hash,
-          state: location.state,
-          key: location.key || 'default'
-        },
-        push: (path, state) => {
-          if (typeof path === 'string') {
-            navigate(path, { state });
-          } else {
-            navigate(path.pathname + (path.search || '') + (path.hash || ''), { 
-              state: path.state || state 
-            });
-          }
-        },
-        replace: (path, state) => {
-          if (typeof path === 'string') {
-            navigate(path, { replace: true, state });
-          } else {
-            navigate(path.pathname + (path.search || '') + (path.hash || ''), { 
-              replace: true, 
-              state: path.state || state 
-            });
-          }
-        },
-        go: (n) => window.history.go(n),
-        goBack: () => window.history.back(),
-        goForward: () => window.history.forward(),
-        listen: () => () => {}, // Simplified listener for compatibility
-        block: () => () => {}, // Simplified block for compatibility
-        createHref: (location) => {
-          if (typeof location === 'string') return location;
-          return location.pathname + (location.search || '') + (location.hash || '');
-        }
-      };
+    const listenersRef = useRef(new Set());
+    const blockersRef = useRef(new Set());
 
-      return {
-        history,
-        location: history.location,
-        match: {
-          params: {},
-          isExact: true,
-          path: location.pathname,
-          url: location.pathname
+    useEffect(() => {
+      listenersRef.current.forEach(listener => {
+        try {
+          listener(location, 'POP');
+        } catch (error) {
+          console.error('History listener error:', error);
         }
-      };
+      });
+    }, [location]);
+
+    const router = useMemo(() => {
+      try {
+        const history = {
+          length: window.history.length,
+          action: 'POP',
+          location: {
+            pathname: location.pathname,
+            search: location.search,
+            hash: location.hash,
+            state: location.state,
+            key: location.key || 'default'
+          },
+          push: (path, state) => {
+            try {
+              if (typeof path === 'string') {
+                navigate(path, { state });
+              } else {
+                navigate(path.pathname + (path.search || '') + (path.hash || ''), { 
+                  state: path.state || state 
+                });
+              }
+            } catch (error) {
+              console.error('History push error:', error);
+            }
+          },
+          replace: (path, state) => {
+            try {
+              if (typeof path === 'string') {
+                navigate(path, { replace: true, state });
+              } else {
+                navigate(path.pathname + (path.search || '') + (path.hash || ''), { 
+                  replace: true, 
+                  state: path.state || state 
+                });
+              }
+            } catch (error) {
+              console.error('History replace error:', error);
+            }
+          },
+          go: (n) => {
+            try {
+              window.history.go(n);
+            } catch (error) {
+              console.error('History go error:', error);
+            }
+          },
+          goBack: () => {
+            try {
+              window.history.back();
+            } catch (error) {
+              console.error('History goBack error:', error);
+            }
+          },
+          goForward: () => {
+            try {
+              window.history.forward();
+            } catch (error) {
+              console.error('History goForward error:', error);
+            }
+          },
+          listen: (listener) => {
+            if (typeof listener !== 'function') {
+              console.warn('History listen: listener must be a function');
+              return () => {};
+            }
+            listenersRef.current.add(listener);
+            return () => {
+              listenersRef.current.delete(listener);
+            };
+          },
+          block: (blocker) => {
+            if (typeof blocker !== 'function') {
+              console.warn('History block: blocker must be a function');
+              return () => {};
+            }
+            blockersRef.current.add(blocker);
+            return () => {
+              blockersRef.current.delete(blocker);
+            };
+          },
+          createHref: (location) => {
+            try {
+              if (typeof location === 'string') return location;
+              return location.pathname + (location.search || '') + (location.hash || '');
+            } catch (error) {
+              console.error('History createHref error:', error);
+              return '/';
+            }
+          }
+        };
+
+        return {
+          history,
+          location: history.location,
+          match: {
+            params: {},
+            isExact: true,
+            path: location.pathname,
+            url: location.pathname
+          }
+        };
+      } catch (error) {
+        console.error('Context bridging error:', error);
+        return {
+          history: {
+            length: 1,
+            action: 'POP',
+            location: { pathname: '/', search: '', hash: '', state: null, key: 'default' },
+            push: () => {},
+            replace: () => {},
+            go: () => {},
+            goBack: () => {},
+            goForward: () => {},
+            listen: () => () => {},
+            block: () => () => {},
+            createHref: () => '/'
+          },
+          location: { pathname: '/', search: '', hash: '', state: null, key: 'default' },
+          match: { params: {}, isExact: true, path: '/', url: '/' }
+        };
+      }
     }, [location, navigate]);
     
     const reactRedux = useContext(ReactReduxContext);
