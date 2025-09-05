@@ -7,7 +7,7 @@
 
 import React from 'react';
 import {useContext, useMemo, useRef, useLayoutEffect} from 'react';
-import {__RouterContext} from 'react-router';
+import {useLocation, useNavigate} from 'react-router-dom';
 import {ReactReduxContext} from 'react-redux';
 
 import ThemeContext from './shared/ThemeContext';
@@ -36,7 +36,23 @@ export default function lazyLegacyRoot(getLegacyComponent) {
     // Populate every contexts we want the legacy subtree to see.
     // Then in src/legacy/createLegacyRoot we will apply them.
     const theme = useContext(ThemeContext);
-    const router = useContext(__RouterContext);
+    const location = useLocation();
+    const navigate = useNavigate();
+    
+    const router = useMemo(() => ({
+      location,
+      history: {
+        push: navigate,
+        replace: (path) => navigate(path, { replace: true }),
+        go: (n) => window.history.go(n),
+        goBack: () => window.history.back(),
+        goForward: () => window.history.forward(),
+        listen: () => () => {},
+        createHref: (location) => typeof location === 'string' ? location : location.pathname + (location.search || '') + (location.hash || ''),
+        location,
+      }
+    }), [location, navigate]);
+    
     const reactRedux = useContext(ReactReduxContext);
     const context = useMemo(
       () => ({
