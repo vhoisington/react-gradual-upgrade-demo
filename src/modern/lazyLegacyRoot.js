@@ -39,19 +39,58 @@ export default function lazyLegacyRoot(getLegacyComponent) {
     const location = useLocation();
     const navigate = useNavigate();
     
-    const router = useMemo(() => ({
-      location,
-      history: {
-        push: navigate,
-        replace: (path) => navigate(path, { replace: true }),
+    const router = useMemo(() => {
+      const history = {
+        length: window.history.length,
+        action: 'POP', // Default action for initial load
+        location: {
+          pathname: location.pathname,
+          search: location.search,
+          hash: location.hash,
+          state: location.state,
+          key: location.key || 'default'
+        },
+        push: (path, state) => {
+          if (typeof path === 'string') {
+            navigate(path, { state });
+          } else {
+            navigate(path.pathname + (path.search || '') + (path.hash || ''), { 
+              state: path.state || state 
+            });
+          }
+        },
+        replace: (path, state) => {
+          if (typeof path === 'string') {
+            navigate(path, { replace: true, state });
+          } else {
+            navigate(path.pathname + (path.search || '') + (path.hash || ''), { 
+              replace: true, 
+              state: path.state || state 
+            });
+          }
+        },
         go: (n) => window.history.go(n),
         goBack: () => window.history.back(),
         goForward: () => window.history.forward(),
-        listen: () => () => {},
-        createHref: (location) => typeof location === 'string' ? location : location.pathname + (location.search || '') + (location.hash || ''),
-        location,
-      }
-    }), [location, navigate]);
+        listen: () => () => {}, // Simplified listener for compatibility
+        block: () => () => {}, // Simplified block for compatibility
+        createHref: (location) => {
+          if (typeof location === 'string') return location;
+          return location.pathname + (location.search || '') + (location.hash || '');
+        }
+      };
+
+      return {
+        history,
+        location: history.location,
+        match: {
+          params: {},
+          isExact: true,
+          path: location.pathname,
+          url: location.pathname
+        }
+      };
+    }, [location, navigate]);
     
     const reactRedux = useContext(ReactReduxContext);
     const context = useMemo(

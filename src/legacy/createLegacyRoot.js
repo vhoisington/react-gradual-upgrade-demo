@@ -11,7 +11,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import ThemeContext from './shared/ThemeContext';
 
-import {Router} from 'react-router';
+import {__RouterContext} from 'react-router';
 import {Provider} from 'react-redux';
 
 // Pass through every context required by this tree.
@@ -19,9 +19,9 @@ import {Provider} from 'react-redux';
 function Bridge({children, context}) {
   return (
     <ThemeContext.Provider value={context.theme}>
-      <Router history={context.router.history}>
+      <__RouterContext.Provider value={context.router}>
         <Provider store={context.reactRedux.store}>{children}</Provider>
-      </Router>
+      </__RouterContext.Provider>
     </ThemeContext.Provider>
   );
 }
