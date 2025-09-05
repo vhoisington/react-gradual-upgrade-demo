@@ -7,7 +7,7 @@
 
 import React from 'react';
 import {useState, Suspense} from 'react';
-import {BrowserRouter, Switch, Route} from 'react-router-dom';
+import {BrowserRouter, Routes, Route} from 'react-router-dom';
 
 import HomePage from './HomePage';
 import AboutPage from './AboutPage';
@@ -25,7 +25,7 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ThemeContext.Provider value={theme}>
         <div style={{fontFamily: 'sans-serif'}}>
           <div
@@ -38,14 +38,10 @@ export default function App() {
             <button onClick={handleToggleClick}>Toggle Theme Context</button>
             <br />
             <Suspense fallback={<Spinner />}>
-              <Switch>
-                <Route path="/about">
-                  <AboutPage />
-                </Route>
-                <Route path="/">
-                  <HomePage />
-                </Route>
-              </Switch>
+              <Routes>
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/" element={<HomePage />} />
+              </Routes>
             </Suspense>
           </div>
         </div>
